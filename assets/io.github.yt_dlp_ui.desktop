@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Yt-Dlp
+Comment=Download video and audio with yt-dlp
+Exec=yt-dlp-ui
+Icon=io.github.yt_dlp_ui
+Terminal=false
+Categories=AudioVideo;Network;
+Keywords=video;audio;download;youtube;queue;
+StartupWMClass=io.github.yt_dlp_ui

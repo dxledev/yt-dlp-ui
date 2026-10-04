@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+set -euo pipefail
+authenticated=0
+for argument in "$@"; do
+    if [[ "$argument" == --cookies-from-browser || "$argument" == --cookies ]]; then authenticated=1; fi
+done
+if [[ "${!#}" == *auth-required* && "$authenticated" == 0 ]]; then
+    printf '%s\n' 'ERROR: [youtube] fixture: Please sign in. Use --cookies-from-browser or --cookies for authentication.'
+    exit 1
+fi
+for argument in "$@"; do
+    if [[ "$argument" == --version ]]; then printf '%s\n' 'test-1.0'; exit 0; fi
+    if [[ "$argument" == --dump-single-json ]]; then
+        printf '%s\n' '{"id":"fixture","title":"Fixture media","duration":90,"uploader":"Test","formats":[{"format_id":"1","ext":"mp4","resolution":"1280x720"}]}'
+        exit 0
+    fi
+done
+url="${!#}"
+printf 'YTDLP_META\t{"id":"fixture","title":"Fixture media","duration":90,"fixturePid":%d}\n' "$$"
+if [[ "$url" == *slow* ]]; then /usr/bin/sleep 20; fi
+if [[ "$url" == *fail* ]]; then printf '%s\n' 'ERROR: fixture failure'; exit 1; fi
+printf 'YTDLP_PROGRESS\t%s\n' '{"downloaded_bytes":512,"total_bytes":1024,"speed":256,"eta":2}'
+/usr/bin/sleep 0.4
+printf 'YTDLP_POST\t%s\n' 'started'
+printf 'YTDLP_FILE\t%s\n' '"/tmp/fixture.mp4"'
