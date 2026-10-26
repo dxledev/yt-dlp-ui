@@ -3,11 +3,15 @@
 #include "core/cookies.h"
 #include "core/theme.h"
 #include "core/download.h"
+#include "portal_picker.h"
 #include <QApplication>
+#include <QCheckBox>
+#include <QIntValidator>
 #include <QClipboard>
 #include <QCloseEvent>
 #include <QDesktopServices>
 #include <QDir>
+#include <QFileDialog>
 #include <QFileInfo>
 #include <QFormLayout>
 #include <QJsonArray>
@@ -184,7 +188,7 @@ void Window::applyTheme() {
         QLabel#sectionTitle { font-size: 18px; font-weight: 600; }
         QLabel#eyebrow { color: %5; font-size: 10px; font-weight: 600; letter-spacing: 1px; }
         QLabel#muted, QLabel#status { color: %5; }
-        QLabel#modalError { color: %12; }
+        QLabel#modalError { color: %9; }
         QLabel#emptyArrow { font-size: 44px; color: %6; }
         QPushButton { background: %2; border: 1px solid %8; border-radius: 8px; padding: 8px 12px; min-height: 18px; }
         QPushButton:hover { background: %3; border-color: %5; }
@@ -193,17 +197,21 @@ void Window::applyTheme() {
         QPushButton:disabled { color: %5; }
         QPushButton#primaryButton:disabled { background: %3; color: %5; border-color: %8; }
         QLineEdit, QComboBox, QSpinBox { background: %1; border: 1px solid %8; border-radius: 8px; padding: 8px 10px; min-height: 18px; selection-background-color: %6; selection-color: %7; }
+        QCheckBox::indicator { width: 18px; height: 18px; background: %1; border: 1px solid %8; border-radius: 6px; }
+        QCheckBox::indicator:checked { background: %6; border-color: %6; }
+        QCheckBox::indicator:focus { border-color: %6; }
         QComboBox::drop-down { border: none; width: 22px; }
         QComboBox QAbstractItemView { background: %2; color: %4; selection-background-color: %6; selection-color: %7; border: 1px solid %8; }
         QListWidget, QScrollArea, QPlainTextEdit { border: none; background: transparent; }
         QPlainTextEdit { background: %1; border-radius: 8px; padding: 10px; selection-background-color: %6; selection-color: %7; }
-        QWidget#modalBackdrop { background: rgba(%9, %10, %11, 210); }
+        QWidget#modalBackdrop { background: transparent; }
         QScrollBar:vertical { background: transparent; width: 8px; margin: 0; }
         QScrollBar::handle:vertical { background: %8; min-height: 28px; border-radius: 4px; }
         QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
         QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { background: transparent; }
     )").arg(c("background"), c("surface"), c("surface_alt"), c("text"), c("muted"), c("accent"), c("accent_text"), c("border"))
-        .arg(theme_.color("background").red()).arg(theme_.color("background").green()).arg(theme_.color("background").blue()).arg(c("danger")));
+        .arg(c("danger")));
+    auto backdrop = theme_.color("background"); backdrop.setAlpha(210); modal_->setBackdrop(backdrop);
     status_->setStyleSheet("color: " + c(status_->property("error").toBool() ? "danger" : "muted") + ";");
     brand_->setPixmap(brandMark(theme_, devicePixelRatioF())); delegate_->theme = theme_; jobs_->viewport()->update();
     setWindowIcon(QIcon(brandMark(theme_, 2)));
@@ -212,15 +220,18 @@ void Window::openSettings() {
     if (!initialized_) return;
     auto *body = new QWidget; auto *layout = new QVBoxLayout(body); auto *form = new QFormLayout;
     auto *binary = new QLineEdit(snapshot_["settings"].toObject()["binary"].toString()); binary->setObjectName("binaryInput");
-    auto *history = new QSpinBox; history->setRange(10, 2000); history->setValue(snapshot_["settings"].toObject()["maxHistory"].toInt());
+    auto *history = new QLineEdit(QString::number(snapshot_["settings"].toObject()["maxHistory"].toInt())); history->setObjectName("historyInput");
+    history->setValidator(new QIntValidator(1, 99999, history));
     form->addRow("yt-dlp executable", binary); form->addRow("Finished history limit", history); layout->addLayout(form);
     auto *copy = label("Choose a yt-dlp executable on your PATH or an absolute path. Audio conversion and video merging require ffmpeg."); copy->setWordWrap(true); layout->addWidget(copy);
     auto *cookies = new CookieSettings(snapshot_["settings"].toObject()); layout->addWidget(cookies);
-    auto *theme = label("Theme: " + theme_.name + "\nSaved colors: " + paths_.config + "/theme.json" + (theme_.sourcePath.isEmpty() ? "" : "\nFollowing: " + theme_.sourcePath)); theme->setWordWrap(true); theme->setTextInteractionFlags(Qt::TextSelectableByMouse); layout->addWidget(theme);
-    auto *hint = label("Theme from the command line:\nyt-dlp-ui theme set 'accent=#b2c7ff'\nyt-dlp-ui theme follow file /path/to/palette.json", "muted"); hint->setWordWrap(true); hint->setTextInteractionFlags(Qt::TextSelectableByMouse); layout->addWidget(hint); layout->addStretch();
-    auto *save = button("Save settings", "primaryButton"); connect(save, &QPushButton::clicked, this, [this, binary, history, cookies] {
+    auto *picker = new QCheckBox; picker->setObjectName("nativePickerInput"); picker->setAccessibleName("Use native file picker");
+    picker->setChecked(snapshot_["settings"].toObject()["useNativePicker"].toBool(true));
+    auto *pickerRow = new QFormLayout; pickerRow->addRow("Use native file picker", picker); layout->addLayout(pickerRow);
+    auto *pickerHint = label("On: choose folders in this window. Off: use your operating system's folder dialog.", "muted"); pickerHint->setWordWrap(true); layout->addWidget(pickerHint); layout->addStretch();
+    auto *save = button("Save settings", "primaryButton"); connect(save, &QPushButton::clicked, this, [this, binary, history, cookies, picker] {
         try {
-            auto settings = cookies->options(); settings["binary"] = binary->text().trimmed(); settings["maxHistory"] = history->value();
+            auto settings = cookies->options(); settings["binary"] = binary->text().trimmed(); settings["maxHistory"] = history->text().toInt(); settings["useNativePicker"] = picker->isChecked();
             client_.send("settings", settings, [this](const QJsonValue &) { modal_->dismiss(); message("Settings saved. Retry the failed download to use the new cookie settings."); });
         } catch (const std::exception &error) { message(error.what(), true); }
     }); modal_->open("Settings", body, save);
@@ -245,6 +256,12 @@ void Window::confirmClear() {
     connect(clear, &QPushButton::clicked, this, [this] { client_.send("clear", {{"confirmed", true}}, [this](const QJsonValue &) { modal_->dismiss(); }); }); modal_->open("Clear finished", body, clear, Modal::Sizing::Content);
 }
 void Window::openFolderPicker() {
+    if (!snapshot_["settings"].toObject()["useNativePicker"].toBool(true)) {
+        const auto start = expandPath(destination_->text().isEmpty() ? QDir::homePath() : destination_->text());
+        chooseFolderWithPortal(this, "Choose a folder", [this](const QString &directory) { if (!directory.isEmpty()) destination_->setText(directory); },
+            [this, start] { const auto directory = QFileDialog::getExistingDirectory(this, "Choose a folder", start); if (!directory.isEmpty()) destination_->setText(directory); });
+        return;
+    }
     auto *body = new QWidget; auto *layout = new QVBoxLayout(body); auto *row = new QHBoxLayout;
     auto *path = new QLineEdit(expandPath(destination_->text().isEmpty() ? QDir::homePath() : destination_->text())); path->setObjectName("folderPath"); auto *up = button("Up"); row->addWidget(path, 1); row->addWidget(up); layout->addLayout(row);
     auto *directories = new QListWidget; directories->setObjectName("folderList"); layout->addWidget(directories, 1);

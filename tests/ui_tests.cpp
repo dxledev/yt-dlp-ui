@@ -13,6 +13,16 @@ using namespace ytdlp;
 class UiTests : public QObject {
     Q_OBJECT
 private slots:
+    void initTestCase() { qputenv("YT_DLP_UI_REDUCED_MOTION", "1"); }
+    void animatedModalSwapKeepsBackdrop() {
+        qputenv("YT_DLP_UI_REDUCED_MOTION", "0");
+        QTemporaryDir dir; Window window(Paths::resolve(dir.path() + "/config", dir.path() + "/state"), nullptr, false); window.show();
+        window.findChild<QPushButton *>("browseButton")->click(); QVERIFY(window.modal()->isVisible()); QTest::qWait(250);
+        window.openFolderPicker(); QVERIFY(window.modal()->isVisible());
+        window.modal()->dismiss(); QTRY_VERIFY(!window.modal()->isVisible());
+        QVERIFY(window.findChild<QWidget *>("composerCard")->isEnabled());
+        qputenv("YT_DLP_UI_REDUCED_MOTION", "1");
+    }
     void embeddedModalAndResize() {
         QTemporaryDir dir; auto paths = Paths::resolve(dir.path() + "/config", dir.path() + "/state");
         Window window(paths, nullptr, false); window.show();
@@ -32,7 +42,7 @@ private slots:
         window.resize(940, 810);
         const QJsonObject data{{"settings", defaultSettings()}, {"theme", presetTheme("slate").toJson()}, {"jobs", QJsonArray{}}, {"paused", false}};
         QVERIFY(QMetaObject::invokeMethod(&window, "updateSnapshot", Qt::DirectConnection, Q_ARG(QJsonObject, data)));
-        window.openSettings(); QVERIFY(window.modal()->isVisible());
+        window.openSettings(); QVERIFY(window.modal()->isVisible()); window.grab().save(qEnvironmentVariable("YT_DLP_UI_TEST_SETTINGS", "/tmp/yt-dlp-ui-settings.png"));
         window.modal()->dismiss();
         window.grab().save(qEnvironmentVariable("YT_DLP_UI_TEST_SCREENSHOT", "/tmp/yt-dlp-ui-test.png"));
     }

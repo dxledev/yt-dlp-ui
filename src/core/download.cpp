@@ -47,7 +47,7 @@ QString executablePath(const QString &requested) {
 QJsonObject defaultSettings() {
     return {{"mode", "video"}, {"quality", "best"}, {"audioFormat", "keep"}, {"videoFormat", "auto"},
         {"dest", QStandardPaths::writableLocation(QStandardPaths::DownloadLocation)},
-        {"binary", "yt-dlp"}, {"maxHistory", 200}, {"cookiesFromBrowser", ""}, {"cookiesFile", ""}};
+        {"binary", "yt-dlp"}, {"maxHistory", 200}, {"cookiesFromBrowser", ""}, {"cookiesFile", ""}, {"useNativePicker", true}};
 }
 QJsonObject validateSettings(QJsonObject settings) {
     const auto defaults = defaultSettings();
@@ -57,6 +57,7 @@ QJsonObject validateSettings(QJsonObject settings) {
     for (auto it = settings.begin(); it != settings.end(); ++it) merged[it.key()] = it.value();
     validateChoices(merged);
     require(merged["binary"].isString() && !merged["binary"].toString().isEmpty(), "Binary must be a name or path");
+    require(merged["useNativePicker"].isBool(), "useNativePicker must be true or false");
     const auto history = merged["maxHistory"].toDouble(-1);
     require(history >= 10 && history <= 2000 && history == int(history), "maxHistory must be an integer from 10 to 2000");
     merged["dest"] = expandPath(merged["dest"].toString());

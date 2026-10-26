@@ -127,6 +127,7 @@ int runCli(const Paths &paths, QStringList arguments) {
             if (separator < 1) throw std::invalid_argument("Expected KEY=VALUE");
             const auto key = assignment.left(separator); const auto value = assignment.mid(separator + 1);
             if (key == "maxHistory") { bool valid; const int number = value.toInt(&valid); if (!valid) throw std::invalid_argument("maxHistory must be an integer"); options[key] = number; }
+            else if (key == "useNativePicker") { if (value != "true" && value != "false") throw std::invalid_argument("useNativePicker must be true or false"); options[key] = value == "true"; }
             else options[key] = value;
         }
         arguments.clear();
