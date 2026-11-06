@@ -98,11 +98,17 @@ void Queue::cancel(const QString &id, bool dryRun) {
     if (activeId_ == id) runner_.cancel();
 }
 void Queue::retry(const QString &id, bool dryRun) {
-    auto value = job(id);
-    if (!terminal(value["status"].toString())) throw std::invalid_argument("Only finished jobs can be retried");
-    auto options = downloadOptions(value);
+    const auto index = indexOf(id); const auto old = jobs_[index].toObject();
+    if (!terminal(old["status"].toString())) throw std::invalid_argument("Only finished jobs can be retried");
+    if (id == activeId_) throw std::invalid_argument("Cancellation is still finishing");
+    auto options = downloadOptions(old);
     for (const auto &key : cookieKeys()) options.remove(key);
-    add(options, dryRun);
+    auto value = validateDownload(options, settings_);
+    if (dryRun) return;
+    value["id"] = id; value["added"] = old["added"];
+    value["status"] = "queued"; value["title"] = "";
+    value["percent"] = QJsonValue(); value["error"] = "";
+    jobs_[index] = value; announce(true); QTimer::singleShot(0, this, &Queue::startNext);
 }
 void Queue::remove(const QString &id, bool dryRun) {
     const auto index = indexOf(id);

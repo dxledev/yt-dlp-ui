@@ -72,7 +72,7 @@ No command opens the window. Commands print JSON.
   info URL [COOKIE OPTIONS]   Inspect media without downloading
   watch                       Stream JSON events until interrupted
   cancel ID                   Cancel one queued or running job
-  retry ID                    Add a finished job again
+  retry ID                    Restart a finished job in place
   remove ID                   Remove an idle entry; keep downloaded files
   pause | resume              Stop/start dispatching queued jobs
   clear --yes                 Clear finished history; keep downloaded files

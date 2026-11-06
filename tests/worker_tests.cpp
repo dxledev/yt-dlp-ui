@@ -65,12 +65,12 @@ private slots:
         QVERIFY(queue.job(failed)["error"].toString().contains("Please sign in"));
         queue.configure({{"cookiesFromBrowser", "brave"}, {"cookiesFile", ""}});
         queue.retry(failed);
-        const auto retried = queue.snapshot()["jobs"].toArray().last().toObject()["id"].toString();
+        QCOMPARE(queue.snapshot()["jobs"].toArray().size(), 1);
+        const auto retried = failed;
         QCOMPARE(queue.job(retried)["cookiesFromBrowser"].toString(), QString("brave"));
         QCOMPARE(queue.job(retried)["quality"].toString(), QString("720"));
         QCOMPARE(queue.job(retried)["videoFormat"].toString(), QString("mkv"));
         QTRY_COMPARE(queue.job(retried)["status"].toString(), QString("done"));
-        QVERIFY(queue.job(failed)["cookiesFromBrowser"].toString().isEmpty());
         QCOMPARE(readJson(paths.config+"/settings.json")["cookiesFromBrowser"].toString(), QString("brave"));
     }
     void sequentialPersistenceAndRetry() {
@@ -95,10 +95,11 @@ private slots:
         QCOMPARE(queue.job(firstId)["file"].toString(), QString("/tmp/fixture.mp4"));
         QCOMPARE(queue.job(firstId)["percent"].toInt(), 100);
         QVERIFY(queue.job(firstId)["finished"].toString() <= queue.job(secondId)["started"].toString());
-        queue.retry(firstId); QCOMPARE(queue.snapshot()["jobs"].toArray().size(), 3);
-        const auto retried = queue.snapshot()["jobs"].toArray().last().toObject()["id"].toString();
+        queue.retry(firstId); QCOMPARE(queue.snapshot()["jobs"].toArray().size(), 2);
+        QCOMPARE(queue.snapshot()["jobs"].toArray().at(0).toObject()["id"].toString(), firstId);
+        const auto retried = firstId;
         QTRY_COMPARE(queue.job(retried)["status"].toString(), QString("done"));
-        queue.clear(true); QCOMPARE(queue.snapshot()["jobs"].toArray().size(), 3);
+        queue.clear(true); QCOMPARE(queue.snapshot()["jobs"].toArray().size(), 2);
         queue.clear(); QCOMPARE(queue.snapshot()["jobs"].toArray().size(), 0);
     }
     void removeQueuedAndFinishedEntries() {

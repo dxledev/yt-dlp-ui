@@ -29,7 +29,7 @@ The available commands are `status`, `list`, `job`, `add`, `cancel`, `retry`, `r
 | `job` | `id` | Job object |
 | `add` | `url`, optional `mode`, `quality`, `videoFormat`, `audioFormat`, `dest`, `binary`, `cookiesFromBrowser`, `cookiesFile` | Created job |
 | `cancel` | `id` | null |
-| `retry` | `id` | null; creates a new job using current cookie defaults |
+| `retry` | `id` | null; resets the finished job in place (same id and list position) using current cookie defaults |
 | `remove` | `id` | null; forgets one entry, keeps downloaded files; rejects active jobs |
 | `pause` / `resume` | none | null |
 | `clear` | `confirmed: true` | null; retains queued/running jobs |
