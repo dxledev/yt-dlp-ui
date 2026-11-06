@@ -102,6 +102,8 @@ QStringList downloadArguments(const QJsonObject &job) {
         args << "--format" << "ba/b" << "--extract-audio";
         if (job["audioFormat"] != "keep") args << "--audio-format" << job["audioFormat"].toString();
     } else args << videoArguments(job);
+    // The default web_embedded client returns googlevideo URLs that 403 without a PO token; web_safari's HLS formats (up to 1080p) work.
+    args << "--extractor-args" << "youtube:player_client=web_safari";
     args << cookieArguments(job) << "--" << job["url"].toString();
     return args;
 }
